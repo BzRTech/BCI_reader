@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leitor de BCI - Boletim de Cadastro Imobiliário</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a5276, #2980b9);
+            color: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+        }
+
+        .header h1 { font-size: 1.6em; font-weight: 600; }
+        .header p { opacity: 0.85; margin-top: 4px; font-size: 0.9em; }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 25px;
+        }
+
+        .upload-area {
+            background: white;
+            border: 2px dashed #2980b9;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 25px;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            background: #ebf5fb;
+            border-color: #1a5276;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(41, 128, 185, 0.15);
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            color: #2980b9;
+            margin-bottom: 10px;
+        }
+
+        .upload-area h2 { color: #1a5276; margin-bottom: 8px; font-size: 1.2em; }
+        .upload-area p { color: #666; font-size: 0.9em; }
+
+        .file-input { display: none; }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 24px;
+            background: #2980b9;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95em;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 12px;
+        }
+
+        .btn:hover { background: #1a5276; }
+        .btn:disabled { background: #bdc3c7; cursor: not-allowed; }
+
+        .file-list {
+            background: white;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .file-list h3 { font-size: 1em; color: #1a5276; margin-bottom: 10px; }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9em;
+        }
+
+        .file-item:last-child { border-bottom: none; }
+        .file-item .name { color: #333; }
+        .file-item .size { color: #888; }
+
+        .file-item .remove {
+            color: #e74c3c;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .file-item .remove:hover { background: #fde8e8; }
+
+        .progress-bar {
+            display: none;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar .bar {
+            height: 6px;
+            background: #ecf0f1;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2980b9, #1abc9c);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.3s;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .progress-bar p { text-align: center; margin-top: 10px; color: #666; font-size: 0.9em; }
+
+        .results { display: none; }
+
+        .result-file {
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .result-file-header {
+            background: #1a5276;
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .result-file-header h3 { font-size: 1em; font-weight: 500; }
+
+        .result-file-header .badge {
+            background: rgba(255,255,255,0.2);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.8em;
+        }
+
+        .bci-section {
+            border-bottom: 1px solid #eee;
+            padding: 15px 20px;
+        }
+
+        .bci-section:last-child { border-bottom: none; }
+
+        .bci-section h4 {
+            color: #2980b9;
+            margin-bottom: 12px;
+            font-size: 0.95em;
+        }
+
+        .bci-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88em;
+        }
+
+        .bci-table th, .bci-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border: 1px solid #e8e8e8;
+        }
+
+        .bci-table th {
+            background: #f7f9fc;
+            color: #1a5276;
+            font-weight: 600;
+            white-space: nowrap;
+            width: 200px;
+        }
+
+        .bci-table td { color: #444; }
+
+        .bci-table tr:hover { background: #f5f8fc; }
+
+        .error-msg {
+            color: #e74c3c;
+            padding: 10px 20px;
+            font-size: 0.9em;
+        }
+
+        .raw-text {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 20px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.8em;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            color: #555;
+            border: 1px solid #e0e0e0;
+        }
+
+        .warning {
+            background: #fef9e7;
+            border-left: 4px solid #f39c12;
+            padding: 10px 15px;
+            margin: 10px 20px;
+            border-radius: 0 6px 6px 0;
+            color: #856404;
+            font-size: 0.88em;
+        }
+
+        .summary {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .summary-item { text-align: center; }
+        .summary-item .number { font-size: 2em; color: #2980b9; font-weight: bold; }
+        .summary-item .label { font-size: 0.85em; color: #666; }
+
+        .export-btn {
+            background: #27ae60;
+            margin-left: 10px;
+        }
+
+        .export-btn:hover { background: #1e8449; }
+
+        .actions { margin-bottom: 20px; display: none; }
+
+        @media (max-width: 768px) {
+            .container { padding: 15px; }
+            .upload-area { padding: 25px; }
+            .bci-table th { width: 140px; }
+            .summary { flex-wrap: wrap; gap: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Leitor de BCI</h1>
+        <p>Boletim de Cadastro Imobiliário - CTM</p>
+    </div>
+
+    <div class="container">
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">&#128196;</div>
+            <h2>Arraste os arquivos PDF aqui</h2>
+            <p>ou clique para selecionar</p>
+            <p style="margin-top:6px; font-size:0.8em; color:#999;">Aceita múltiplos arquivos - cada um pode conter vários BCIs</p>
+            <input type="file" class="file-input" id="fileInput" accept=".pdf" multiple>
+        </div>
+
+        <div class="file-list" id="fileList">
+            <h3>Arquivos selecionados:</h3>
+            <div id="fileItems"></div>
+            <button class="btn" id="processBtn" onclick="processFiles()">Processar Arquivos</button>
+            <button class="btn" style="background:#95a5a6; margin-left:8px;" onclick="clearFiles()">Limpar</button>
+        </div>
+
+        <div class="progress-bar" id="progressBar">
+            <div class="bar"><div class="bar-fill" id="barFill"></div></div>
+            <p id="progressText">Processando arquivos...</p>
+        </div>
+
+        <div class="actions" id="actions">
+            <button class="btn export-btn" onclick="exportCSV()">Exportar CSV</button>
+            <button class="btn" style="background:#8e44ad;" onclick="window.location.reload()">Nova Leitura</button>
+        </div>
+
+        <div class="summary" id="summary" style="display:none;">
+            <div class="summary-item">
+                <div class="number" id="totalFiles">0</div>
+                <div class="label">Arquivos</div>
+            </div>
+            <div class="summary-item">
+                <div class="number" id="totalBcis">0</div>
+                <div class="label">BCIs encontrados</div>
+            </div>
+            <div class="summary-item">
+                <div class="number" id="totalFields">0</div>
+                <div class="label">Campos extraídos</div>
+            </div>
+        </div>
+
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        const FIELD_LABELS = {
+            inscricao: 'Inscrição Imobiliária',
+            setor: 'Setor',
+            quadra: 'Quadra',
+            lote: 'Lote',
+            unidade: 'Unidade',
+            proprietario: 'Proprietário',
+            cpf_cnpj: 'CPF/CNPJ',
+            endereco: 'Endereço',
+            numero: 'Número',
+            complemento: 'Complemento',
+            bairro: 'Bairro',
+            cidade: 'Cidade/Município',
+            cep: 'CEP',
+            area_terreno: 'Área do Terreno',
+            area_construida: 'Área Construída',
+            uso: 'Uso do Imóvel',
+            padrao: 'Padrão de Construção',
+            tipo_construcao: 'Tipo de Construção',
+            estado_conservacao: 'Estado de Conservação',
+            ano_construcao: 'Ano de Construção',
+            testada: 'Testada',
+            profundidade: 'Profundidade',
+            topografia: 'Topografia',
+            situacao: 'Situação',
+            pedologia: 'Pedologia',
+            valor_venal: 'Valor Venal'
+        };
+
+        let selectedFiles = [];
+        let allResults = null;
+
+        // Drag & drop
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            addFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', () => {
+            addFiles(fileInput.files);
+        });
+
+        function addFiles(fileListObj) {
+            for (const f of fileListObj) {
+                if (f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')) {
+                    if (!selectedFiles.some(sf => sf.name === f.name && sf.size === f.size)) {
+                        selectedFiles.push(f);
+                    }
+                }
+            }
+            renderFileList();
+        }
+
+        function renderFileList() {
+            const container = document.getElementById('fileItems');
+            const fileListEl = document.getElementById('fileList');
+
+            if (selectedFiles.length === 0) {
+                fileListEl.style.display = 'none';
+                return;
+            }
+
+            fileListEl.style.display = 'block';
+            container.innerHTML = selectedFiles.map((f, i) => `
+                <div class="file-item">
+                    <span class="name">${f.name}</span>
+                    <span class="size">${(f.size / 1024).toFixed(1)} KB</span>
+                    <span class="remove" onclick="removeFile(${i})">&#10005;</span>
+                </div>
+            `).join('');
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            renderFileList();
+        }
+
+        function clearFiles() {
+            selectedFiles = [];
+            renderFileList();
+            fileInput.value = '';
+        }
+
+        async function processFiles() {
+            if (selectedFiles.length === 0) return;
+
+            const progressBar = document.getElementById('progressBar');
+            const barFill = document.getElementById('barFill');
+            const progressText = document.getElementById('progressText');
+            const processBtn = document.getElementById('processBtn');
+
+            progressBar.style.display = 'block';
+            processBtn.disabled = true;
+            barFill.style.width = '20%';
+            progressText.textContent = 'Enviando arquivos...';
+
+            const formData = new FormData();
+            selectedFiles.forEach(f => formData.append('files', f));
+
+            try {
+                barFill.style.width = '50%';
+                progressText.textContent = 'Processando PDFs...';
+
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                barFill.style.width = '80%';
+                progressText.textContent = 'Lendo resultados...';
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erro ao processar');
+                }
+
+                barFill.style.width = '100%';
+                progressText.textContent = 'Concluído!';
+
+                allResults = data.results;
+                renderResults(data.results);
+
+            } catch (err) {
+                progressText.textContent = 'Erro: ' + err.message;
+                barFill.style.width = '100%';
+                barFill.style.background = '#e74c3c';
+            } finally {
+                processBtn.disabled = false;
+                setTimeout(() => {
+                    progressBar.style.display = 'none';
+                    barFill.style.width = '0%';
+                    barFill.style.background = '';
+                }, 2000);
+            }
+        }
+
+        function renderResults(results) {
+            const container = document.getElementById('results');
+            const actionsEl = document.getElementById('actions');
+            const summaryEl = document.getElementById('summary');
+
+            container.style.display = 'block';
+            actionsEl.style.display = 'block';
+            summaryEl.style.display = 'flex';
+
+            let totalBcis = 0;
+            let totalFields = 0;
+
+            let html = '';
+
+            results.forEach(result => {
+                html += `<div class="result-file">`;
+                html += `<div class="result-file-header">
+                    <h3>${result.filename}</h3>
+                    <span class="badge">${result.total_bcis || 0} BCI(s)</span>
+                </div>`;
+
+                if (result.error) {
+                    html += `<div class="error-msg">Erro: ${result.error}</div>`;
+                } else {
+                    totalBcis += result.bcis.length;
+
+                    result.bcis.forEach(bci => {
+                        const bciIndex = bci._bci_index || 1;
+                        html += `<div class="bci-section">`;
+                        html += `<h4>BCI #${bciIndex}</h4>`;
+
+                        if (bci._aviso) {
+                            html += `<div class="warning">${bci._aviso}</div>`;
+                        }
+
+                        if (bci._raw_text) {
+                            html += `<div class="raw-text">${escapeHtml(bci._raw_text)}</div>`;
+                        }
+
+                        // Campos extraídos
+                        const fields = Object.entries(bci).filter(([k]) => !k.startsWith('_'));
+                        if (fields.length > 0) {
+                            totalFields += fields.length;
+                            html += `<table class="bci-table">`;
+                            fields.forEach(([key, val]) => {
+                                const label = FIELD_LABELS[key] || key;
+                                html += `<tr><th>${label}</th><td>${escapeHtml(val)}</td></tr>`;
+                            });
+                            html += `</table>`;
+                        }
+
+                        html += `</div>`;
+                    });
+                }
+
+                html += `</div>`;
+            });
+
+            container.innerHTML = html;
+
+            document.getElementById('totalFiles').textContent = results.length;
+            document.getElementById('totalBcis').textContent = totalBcis;
+            document.getElementById('totalFields').textContent = totalFields;
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function exportCSV() {
+            if (!allResults) return;
+
+            // Coletar todos os campos usados
+            const allFieldKeys = new Set();
+            allResults.forEach(r => {
+                (r.bcis || []).forEach(bci => {
+                    Object.keys(bci).filter(k => !k.startsWith('_')).forEach(k => allFieldKeys.add(k));
+                });
+            });
+
+            const fieldKeys = Array.from(allFieldKeys);
+            const headers = ['Arquivo', 'BCI #', ...fieldKeys.map(k => FIELD_LABELS[k] || k)];
+
+            const rows = [headers];
+
+            allResults.forEach(r => {
+                (r.bcis || []).forEach(bci => {
+                    const row = [
+                        r.filename,
+                        bci._bci_index || 1,
+                        ...fieldKeys.map(k => bci[k] || '')
+                    ];
+                    rows.push(row);
+                });
+            });
+
+            const csvContent = rows.map(row =>
+                row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';')
+            ).join('\n');
+
+            // BOM para Excel reconhecer UTF-8
+            const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'bcis_exportados.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
