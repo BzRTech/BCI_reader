@@ -5,3 +5,7 @@ uploads/
 *.egg-info/
 dist/
 build/
+db.sqlite3
+__pycache__/
+*.pyc
+uploads/
